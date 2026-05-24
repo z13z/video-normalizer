@@ -5,11 +5,21 @@ from pathlib import Path
 import ffmpeg
 import tempfile
 import os
+import time
 
 from .analyzer import FileAnalysis, StreamInfo
 from .config import Config
 
 logger = logging.getLogger(__name__)
+
+
+def format_duration(seconds):
+    minutes = int(seconds) / 60
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h {minutes}m"
+    else:
+        return f"{minutes}m"
 
 
 def _build_output_kwargs(
@@ -18,11 +28,9 @@ def _build_output_kwargs(
 ) -> tuple[list[str], dict]:
     maps: list[str] = []
     kwargs: dict = {}
-
     append_video_processing_params(maps, kwargs, analysis.video, config.av1_crf, config.cpu_count)
     append_audio_processing_params(maps, kwargs, analysis.audio, config.aac_bitrate)
     append_subtitle_processing_params(maps, kwargs, analysis.subtitle)
-
     return maps, kwargs
 
 
@@ -79,15 +87,17 @@ def convert(input_path: Path, analysis: FileAnalysis, config: Config) -> Path:
         raise RuntimeError(f"No streams to include for {input_path}")
 
     inp = ffmpeg.input(str(input_path))
-    out = ffmpeg.output(
-        inp,
-        tmp_output,
-        map=maps,
-        **codec_kwargs,
-    )
+    # Strip file-index prefix ('0:v:0' → 'v:0') and select stream objects so
+    # ffmpeg-python emits one -map flag per stream instead of joining them.
+    streams = [inp[m.split(":", 1)[1]] for m in maps]
+    out = ffmpeg.output(*streams, tmp_output, **codec_kwargs)
+    logger.info(f"maps={maps} codec_kwargs={codec_kwargs}")
 
     try:
+        start = time.perf_counter()
         out.run(overwrite_output=True, quiet=True, capture_stderr=True)
+        elapsed = time.perf_counter() - start
+        logging.info(f"Normalization of {input_path} completed in {format_duration(elapsed)}")
     except ffmpeg.Error as exc:
         stderr = exc.stderr.decode(errors="replace") if exc.stderr else ""
         raise RuntimeError(f"ffmpeg failed for {input_path}:\n{stderr}") from exc
