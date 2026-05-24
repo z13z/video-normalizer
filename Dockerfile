@@ -3,8 +3,8 @@ FROM python:3.12-slim
 ARG UID=1000
 ARG GID=1000
 
-RUN addgroup -g ${GID} appgroup && \
-    adduser -D -u ${UID} -G appgroup appuser
+RUN groupadd -g ${GID} appgroup && \
+    useradd -m -u ${UID} -g ${GID} -s /bin/bash appuser
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
