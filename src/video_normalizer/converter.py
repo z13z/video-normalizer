@@ -28,7 +28,7 @@ def _build_output_kwargs(
 ) -> tuple[list[str], dict]:
     maps: list[str] = []
     kwargs: dict = {}
-    append_video_processing_params(maps, kwargs, analysis.video, config.av1_crf, config.cpu_count)
+    append_video_processing_params(maps, kwargs, analysis.video, config.av1_crf, config.av1_preset)
     append_audio_processing_params(maps, kwargs, analysis.audio, config.aac_bitrate)
     append_subtitle_processing_params(maps, kwargs, analysis.subtitle)
     return maps, kwargs
@@ -38,7 +38,7 @@ def append_subtitle_processing_params(maps, kwargs, subtitle_streams):
     kept_subs: list[StreamInfo] = [s for s in subtitle_streams if not s.drop]
     out_s = 0
     for s in kept_subs:
-        maps.append(f"0:s:{s.type_index}")
+        maps.append(f"s:{s.type_index}")
         if s.needs_transcode:
             kwargs[f"c:s:{out_s}"] = "mov_text"
         else:
@@ -46,14 +46,14 @@ def append_subtitle_processing_params(maps, kwargs, subtitle_streams):
         out_s += 1
 
 
-def append_video_processing_params(maps, kwargs, video_streams, av1_crf, cpu_count):
+def append_video_processing_params(maps, kwargs, video_streams, av1_crf, av1_preset):
     out_v = 0
     any_av1_encode = False
 
     for s in video_streams:
-        maps.append(f"0:v:{s.type_index}")
+        maps.append(f"v:{s.type_index}")
         if s.needs_transcode:
-            kwargs[f"c:v:{out_v}"] = "libaom-av1"
+            kwargs[f"c:v:{out_v}"] = "libsvtav1"
             any_av1_encode = True
         else:
             kwargs[f"c:v:{out_v}"] = "copy"
@@ -62,13 +62,13 @@ def append_video_processing_params(maps, kwargs, video_streams, av1_crf, cpu_cou
     if any_av1_encode:
         kwargs["crf"] = av1_crf
         kwargs["b:v"] = 0
-        kwargs["cpu-used"] = cpu_count
+        kwargs["preset"] = av1_preset
 
 
 def append_audio_processing_params(maps, kwargs, audio_streams, aac_bitrate):
     out_a = 0
     for s in audio_streams:
-        maps.append(f"0:a:{s.type_index}")
+        maps.append(f"a:{s.type_index}")
         if s.needs_transcode:
             kwargs[f"c:a:{out_a}"] = "aac"
             kwargs[f"b:a:{out_a}"] = aac_bitrate
@@ -87,9 +87,7 @@ def convert(input_path: Path, analysis: FileAnalysis, config: Config) -> Path:
         raise RuntimeError(f"No streams to include for {input_path}")
 
     inp = ffmpeg.input(str(input_path))
-    # Strip file-index prefix ('0:v:0' → 'v:0') and select stream objects so
-    # ffmpeg-python emits one -map flag per stream instead of joining them.
-    streams = [inp[m.split(":", 1)[1]] for m in maps]
+    streams = [inp[m] for m in maps]
     out = ffmpeg.output(*streams, tmp_output, **codec_kwargs)
     logger.info(f"maps={maps} codec_kwargs={codec_kwargs}")
 
