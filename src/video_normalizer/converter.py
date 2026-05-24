@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def format_duration(seconds):
-    minutes = int(seconds) / 60
+    minutes = int(seconds / 60)
     hours, minutes = divmod(minutes, 60)
     if hours:
         return f"{hours}h {minutes}m"
@@ -108,7 +108,7 @@ def convert(input_path: Path, analysis: FileAnalysis, config: Config) -> Path:
         start = time.perf_counter()
         out.run(overwrite_output=True, quiet=True, capture_stderr=True)
         elapsed = time.perf_counter() - start
-        logging.info(f"Normalization of {input_path} completed in {format_duration(elapsed)}")
+        logging.info(f"Normalization of %s completed in %s", input_path, format_duration(elapsed))
     except ffmpeg.Error as exc:
         stderr = exc.stderr.decode(errors="replace") if exc.stderr else ""
         raise RuntimeError(f"ffmpeg failed for {input_path}:\n{stderr}") from exc

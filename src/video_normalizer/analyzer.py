@@ -3,6 +3,7 @@ from pathlib import Path
 
 import ffmpeg
 
+from video_normalizer.config import Config
 
 CONVERTIBLE_SUBTITLE_CODECS: frozenset[str] = frozenset({
     "subrip",
@@ -43,7 +44,7 @@ class FileAnalysis:
         return False
 
 
-def analyze(path: Path) -> FileAnalysis:
+def analyze(path: Path, config: Config) -> FileAnalysis:
     probe = ffmpeg.probe(str(path))
 
     video: list[StreamInfo] = []
@@ -68,7 +69,7 @@ def analyze(path: Path) -> FileAnalysis:
                 type_index=type_idx,
                 codec_type="video",
                 codec_name=codec,
-                needs_transcode=codec != "av1",
+                needs_transcode=codec != config.video_codec,
                 drop=False,
             ))
 
@@ -89,7 +90,7 @@ def analyze(path: Path) -> FileAnalysis:
                     type_index=type_idx,
                     codec_type="subtitle",
                     codec_name=codec,
-                    needs_transcode=codec != "subrip",
+                    needs_transcode=codec != "mov_text",
                     drop=False,
                 ))
             else:

@@ -20,15 +20,19 @@ def _setup_logging(level: str) -> None:
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
 
-def process_file(path: Path, config: Config, log: logging.Logger) -> bool:
+# returns two bools, first one shows if file was processed successfully and second if it was skipped.
+# todo fix using proper result wrapper enum
+def process_file(path: Path, config: Config, log: logging.Logger):
     log.info("Scanning: %s", path)
 
     try:
-        analysis = analyze(path)
+        analysis = analyze(path, config)
     except ffmpeg.Error as exc:
         stderr = exc.stderr.decode(errors="replace") if exc.stderr else str(exc)
         log.error("Failed to probe %s: %s", path, stderr)
-        return False
+        return False, False
+    if not analysis.requires_processing:
+        return True, True
 
     tmp_path: Path | None = None
     try:
@@ -45,11 +49,11 @@ def process_file(path: Path, config: Config, log: logging.Logger) -> bool:
 
         shutil.move(str(tmp_path), str(target))
         log.info("  Done → %s", target)
-        return True
+        return True, False
 
     except RuntimeError as exc:
         log.error("Conversion failed for %s: %s", path, exc)
-        return False
+        return False, False
     finally:
         if tmp_path and tmp_path.exists():
             tmp_path.unlink(missing_ok=True)
@@ -76,23 +80,25 @@ def main():
         log.error("Media path does not exist or is not a directory: %s", config.media_path)
         sys.exit(1)
 
-    total = ok = failed = 0
+    total_cnt = ok_cnt = skipped_cnt = failed_cnt = 0
 
     for video_path in scan_video_files(config.media_path):
-        total += 1
-        success = process_file(video_path, config, log)
-        log.info("\t===============\tProcessed: %d / %d\t===============", success, total)
+        total_cnt += 1
+        success, skipped = process_file(video_path, config, log)
+        log.info("\t===============\tProcessed: %d / %d\t===============", success, total_cnt)
         if success:
-            ok += 1
+            ok_cnt += 1
+        elif skipped:
+            skipped_cnt += 1
         else:
-            failed += 1
+            failed_cnt += 1
 
     log.info(
-        "Finished. Total=%d  OK=%d  Skipped(already normalised counted in OK)  Failed=%d",
-        total, ok, failed,
+        "Finished. Total=%d  OK=%d  Skipped=%d  Failed=%d",
+        total_cnt, ok_cnt, skipped, failed_cnt,
     )
 
-    if failed:
+    if failed_cnt:
         sys.exit(1)
 
 
