@@ -8,7 +8,7 @@ import ffmpeg
 
 from .analyzer import analyze
 from .config import Config
-from .converter import convert
+from .converter import convert, SUPPORTED_VIDEO_CODECS
 from .scanner import scan_video_files
 
 
@@ -55,11 +55,21 @@ def process_file(path: Path, config: Config, log: logging.Logger) -> bool:
             tmp_path.unlink(missing_ok=True)
 
 
+def validate_config(config: Config, log: logging.Logger) -> bool:
+    if config.video_codec not in SUPPORTED_VIDEO_CODECS:
+        log.error(
+            "Unsupported VIDEO_CODEC %r. Supported values: %s",
+            config.video_codec,
+            ", ".join(SUPPORTED_VIDEO_CODECS),
+        )
+        sys.exit(1)
+
+
 def main():
     config = Config()
     _setup_logging(config.log_level)
     log = logging.getLogger("video_normalizer")
-
+    validate_config(config, log)
     log.info("Starting video normalizer, Media path : %s, AAC bitrate: %s", config.media_path, config.aac_bitrate)
 
     if not os.path.isdir(config.media_path):

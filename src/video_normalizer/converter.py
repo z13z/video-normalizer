@@ -28,7 +28,7 @@ def _build_output_kwargs(
 ) -> tuple[list[str], dict]:
     maps: list[str] = []
     kwargs: dict = {}
-    append_video_processing_params(maps, kwargs, analysis.video, config.av1_crf, config.av1_preset)
+    append_video_processing_params(maps, kwargs, analysis.video, config)
     append_audio_processing_params(maps, kwargs, analysis.audio, config.aac_bitrate)
     append_subtitle_processing_params(maps, kwargs, analysis.subtitle)
     return maps, kwargs
@@ -46,23 +46,36 @@ def append_subtitle_processing_params(maps, kwargs, subtitle_streams):
         out_s += 1
 
 
-def append_video_processing_params(maps, kwargs, video_streams, av1_crf, av1_preset):
+def _apply_video_encode_params(kwargs: dict, codec: str, config: Config):
+    if codec == "av1":
+        kwargs["crf"] = config.av1_crf
+        kwargs["b:v"] = 0
+        kwargs["preset"] = config.av1_preset
+    elif codec == "h264":
+        kwargs["crf"] = config.h264_crf
+        kwargs["preset"] = config.h264_preset
+
+
+SUPPORTED_VIDEO_CODECS = {"av1": "libsvtav1", "h264": "libx264"}
+
+
+def append_video_processing_params(maps, kwargs, video_streams, config: Config):
+    codec = config.video_codec
+    ffmpeg_encoder = SUPPORTED_VIDEO_CODECS[codec]
     out_v = 0
-    any_av1_encode = False
+    any_transcode = False
 
     for s in video_streams:
         maps.append(f"v:{s.type_index}")
         if s.needs_transcode:
-            kwargs[f"c:v:{out_v}"] = "libsvtav1"
-            any_av1_encode = True
+            kwargs[f"c:v:{out_v}"] = ffmpeg_encoder
+            any_transcode = True
         else:
             kwargs[f"c:v:{out_v}"] = "copy"
         out_v += 1
 
-    if any_av1_encode:
-        kwargs["crf"] = av1_crf
-        kwargs["b:v"] = 0
-        kwargs["preset"] = av1_preset
+    if any_transcode:
+        _apply_video_encode_params(kwargs, codec, config)
 
 
 def append_audio_processing_params(maps, kwargs, audio_streams, aac_bitrate):
