@@ -71,7 +71,7 @@ def main():
     for video_path in scan_video_files(config.media_path):
         total += 1
         success = process_file(video_path, config, log)
-        log.info("\t\t\t\tProcessed: %d / %d", success, total)
+        log.info("\t===============\tProcessed: %d / %d\t===============", success, total)
         if success:
             ok += 1
         else:
