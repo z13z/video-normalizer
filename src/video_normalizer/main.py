@@ -85,13 +85,13 @@ def main():
     for video_path in scan_video_files(config.media_path):
         total_cnt += 1
         success, skipped = process_file(video_path, config, log)
-        log.info("\t===============\tProcessed: %d / %d\t===============", success, total_cnt)
         if success:
             ok_cnt += 1
         elif skipped:
             skipped_cnt += 1
         else:
             failed_cnt += 1
+        log.info("\t===============\tProcessed: %d / %d\t===============", ok_cnt, total_cnt)
 
     log.info(
         "Finished. Total=%d  OK=%d  Skipped=%d  Failed=%d",
