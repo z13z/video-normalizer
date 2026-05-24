@@ -95,7 +95,7 @@ def main():
 
     log.info(
         "Finished. Total=%d  OK=%d  Skipped=%d  Failed=%d",
-        total_cnt, ok_cnt, skipped, failed_cnt,
+        total_cnt, ok_cnt, skipped_cnt, failed_cnt,
     )
 
     if failed_cnt:
