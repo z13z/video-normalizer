@@ -9,3 +9,4 @@ class Config:
     av1_crf: int = field(default_factory=lambda: int(os.getenv("AV1_CRF", "26")))
     av1_preset: int = field(default_factory=lambda: int(os.getenv("AV1_PRESET", "4")))
     aac_bitrate: str = field(default_factory=lambda: os.getenv("AAC_BITRATE", "192k"))
+    ffmpeg_threads: int = field(default_factory=lambda: int(os.getenv("FFMPEG_THREADS", "0")))

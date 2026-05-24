@@ -88,7 +88,7 @@ def convert(input_path: Path, analysis: FileAnalysis, config: Config) -> Path:
 
     inp = ffmpeg.input(str(input_path))
     streams = [inp[m] for m in maps]
-    out = ffmpeg.output(*streams, tmp_output, **codec_kwargs)
+    out = ffmpeg.output(*streams, tmp_output, **codec_kwargs, threads=config.ffmpeg_threads)
     logger.info(f"maps={maps} codec_kwargs={codec_kwargs}")
 
     try:
