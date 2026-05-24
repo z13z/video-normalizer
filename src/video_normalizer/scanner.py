@@ -12,7 +12,6 @@ VIDEO_EXTENSIONS: frozenset[str] = frozenset({
 
 
 def scan_video_files(media_path: str) -> Iterator[Path]:
-    """Yield every video file found recursively under media_path."""
     for root, _dirs, files in os.walk(media_path):
         for name in sorted(files):
             path = Path(root) / name
