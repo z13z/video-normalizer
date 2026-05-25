@@ -48,12 +48,12 @@ def append_subtitle_processing_params(maps, kwargs, subtitle_streams):
 
 def _apply_video_encode_params(kwargs: dict, codec: str, config: Config):
     if codec == "av1":
-        kwargs["crf"] = config.av1_crf
+        kwargs["crf"] = config.crf
         kwargs["b:v"] = 0
-        kwargs["preset"] = config.av1_preset
+        kwargs["preset"] = config.preset
     elif codec == "h264":
-        kwargs["crf"] = config.h264_crf
-        kwargs["preset"] = config.h264_preset
+        kwargs["crf"] = config.crf
+        kwargs["preset"] = config.preset
 
 
 SUPPORTED_VIDEO_CODECS = {"av1": "libsvtav1", "h264": "libx264"}
