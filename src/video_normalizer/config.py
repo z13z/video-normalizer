@@ -8,7 +8,7 @@ _QUALITY_CRF = {
 
 _SPEED_PRESET = {
     "h264": {"fast": "veryfast", "medium": "medium", "slow": "veryslow"},
-    "av1":  {"fast": 11, "medium": 8, "slow": 4},
+    "av1":  {"fast": 10, "medium": 8, "slow": 6},
 }
 
 
