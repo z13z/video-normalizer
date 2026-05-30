@@ -9,6 +9,7 @@ import ffmpeg
 from .analyzer import analyze
 from .config import Config
 from .converter import convert, SUPPORTED_VIDEO_CODECS
+from .ocr_subtitles import extract_and_ocr
 from .scanner import scan_video_files
 
 
@@ -34,10 +35,15 @@ def process_file(path: Path, config: Config, log: logging.Logger):
     if not analysis.requires_processing:
         return True, True
 
+    srt_paths: list[Path] = []
     tmp_path: Path | None = None
     try:
+        if any(s.needs_ocr for s in analysis.subtitle):
+            log.info("  Running OCR on image-based subtitle streams…")
+            srt_paths = extract_and_ocr(path, analysis)
+
         log.info("  Converting…")
-        tmp_path = convert(path, analysis, config)
+        tmp_path = convert(path, analysis, config, srt_paths)
         log.info("  Converted to tmp: %s (%.1f MB)",
                  tmp_path, tmp_path.stat().st_size / 1_048_576)
 
@@ -57,9 +63,11 @@ def process_file(path: Path, config: Config, log: logging.Logger):
     finally:
         if tmp_path and tmp_path.exists():
             tmp_path.unlink(missing_ok=True)
+        for srt in srt_paths:
+            srt.unlink(missing_ok=True)
 
 
-def validate_config(config: Config, log: logging.Logger) -> bool:
+def validate_config(config: Config, log: logging.Logger):
     if config.video_codec not in SUPPORTED_VIDEO_CODECS:
         log.error(
             "Unsupported VIDEO_CODEC %r. Supported values: %s",

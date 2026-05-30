@@ -14,6 +14,11 @@ CONVERTIBLE_SUBTITLE_CODECS: frozenset[str] = frozenset({
     "tx3g",
 })
 
+IMAGE_BASED_SUBTITLE_CODECS: frozenset[str] = frozenset({
+    "hdmv_pgs_subtitle"
+})
+
+
 @dataclass(frozen=True)
 class StreamInfo:
     global_index: int
@@ -22,6 +27,7 @@ class StreamInfo:
     codec_name: str
     needs_transcode: bool
     drop: bool
+    needs_ocr: bool = False
 
 
 @dataclass(frozen=True)
@@ -92,6 +98,17 @@ def analyze(path: Path, config: Config) -> FileAnalysis:
                     codec_name=codec,
                     needs_transcode=codec != "mov_text",
                     drop=False,
+                    needs_ocr=False,
+                ))
+            elif codec in IMAGE_BASED_SUBTITLE_CODECS:
+                subtitle.append(StreamInfo(
+                    global_index=global_idx,
+                    type_index=type_idx,
+                    codec_type="subtitle",
+                    codec_name=codec,
+                    needs_transcode=False,
+                    drop=True,
+                    needs_ocr=True,
                 ))
             else:
                 subtitle.append(StreamInfo(
@@ -101,6 +118,7 @@ def analyze(path: Path, config: Config) -> FileAnalysis:
                     codec_name=codec,
                     needs_transcode=False,
                     drop=True,
+                    needs_ocr=False,
                 ))
 
     return FileAnalysis(

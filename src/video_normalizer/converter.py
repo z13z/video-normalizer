@@ -90,7 +90,21 @@ def append_audio_processing_params(maps, kwargs, audio_streams, aac_bitrate):
         out_a += 1
 
 
-def convert(input_path: Path, analysis: FileAnalysis, config: Config) -> Path:
+def append_external_subtitle_files(srt_paths, streams, codec_kwargs, maps):
+    if srt_paths:
+        existing_sub_count = sum(1 for m in maps if m.startswith("s:"))
+        for i, srt_path in enumerate(srt_paths):
+            srt_inp = ffmpeg.input(str(srt_path))
+            streams.append(srt_inp["s"])
+            codec_kwargs[f"c:s:{existing_sub_count + i}"] = "mov_text"
+
+
+def convert(
+    input_path: Path,
+    analysis: FileAnalysis,
+    config: Config,
+    srt_paths: list[Path],
+) -> Path:
     uid = uuid.uuid4().hex[:8]
     tmp_output = f"{tempfile.gettempdir()}{os.sep}{input_path.stem}_{uid}.mp4"
 
@@ -101,6 +115,7 @@ def convert(input_path: Path, analysis: FileAnalysis, config: Config) -> Path:
 
     inp = ffmpeg.input(str(input_path))
     streams = [inp[m] for m in maps]
+    append_external_subtitle_files(srt_paths, streams, codec_kwargs, maps)
     out = ffmpeg.output(*streams, tmp_output, **codec_kwargs)
     logger.info(f"maps={maps} codec_kwargs={codec_kwargs}")
 
