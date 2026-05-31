@@ -38,4 +38,4 @@ class Config:
 
     @property
     def whisper_model(self):
-        return _WHISPER_MODEL_PRESET[os.getenv("WHISPER_MODEL", "turbo")]
+        return _WHISPER_MODEL_PRESET[os.getenv("WHISPER_MODEL", "fast")]
