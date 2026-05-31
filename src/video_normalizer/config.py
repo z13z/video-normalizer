@@ -12,8 +12,8 @@ _SPEED_PRESET = {
 }
 
 _WHISPER_MODEL_PRESET = {
-    "fast": "turbo",
-    "medium":  "turbo",
+    "fast": "large-v3-turbo",
+    "medium":  "large-v3-turbo",
     "slow": "large-v3",
 }
 
