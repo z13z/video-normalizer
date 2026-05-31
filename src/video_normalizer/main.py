@@ -9,8 +9,8 @@ import ffmpeg
 from .analyzer import analyze
 from .config import Config
 from .converter import convert, SUPPORTED_VIDEO_CODECS
-from .ocr_subtitles import extract_and_ocr
 from .scanner import scan_video_files
+from .whisper_transcriber import transcribe as whisper_transcribe
 
 
 def _setup_logging(level: str) -> None:
@@ -32,15 +32,16 @@ def process_file(path: Path, config: Config, log: logging.Logger):
         stderr = exc.stderr.decode(errors="replace") if exc.stderr else str(exc)
         log.error("Failed to probe %s: %s", path, stderr)
         return False, False
-    if not analysis.requires_processing:
+    needs_whisper = config.whisper_model != "none" and analysis.needs_subtitle_generation
+    if not analysis.requires_processing and not needs_whisper:
         return True, True
 
     srt_paths: list[Path] = []
     tmp_path: Path | None = None
     try:
-        if any(s.needs_ocr for s in analysis.subtitle):
-            log.info("  Running OCR on image-based subtitle streams…")
-            srt_paths = extract_and_ocr(path, analysis)
+        if needs_whisper:
+            log.info("  Running Whisper transcription for missing English subtitles…")
+            srt_paths.extend(whisper_transcribe(path, analysis, config))
 
         log.info("  Converting…")
         tmp_path = convert(path, analysis, config, srt_paths)
@@ -88,10 +89,8 @@ def main():
         log.error("Media path does not exist or is not a directory: %s", config.media_path)
         sys.exit(1)
 
-    total_cnt = ok_cnt = skipped_cnt = failed_cnt = 0
-
+    ok_cnt = skipped_cnt = failed_cnt = 0
     for video_path in scan_video_files(config.media_path):
-        total_cnt += 1
         success, skipped = process_file(video_path, config, log)
         if success:
             ok_cnt += 1
@@ -99,13 +98,9 @@ def main():
             skipped_cnt += 1
         else:
             failed_cnt += 1
-        log.info("\t===============\tProcessed: %d / %d\t===============", ok_cnt, total_cnt)
+        log.info("\t===============\tProcessed: %d \t===============", ok_cnt)
 
-    log.info(
-        "Finished. Total=%d  OK=%d  Skipped=%d  Failed=%d",
-        total_cnt, ok_cnt, skipped_cnt, failed_cnt,
-    )
-
+    log.info("Finished. OK=%d  Skipped=%d  Failed=%d",ok_cnt, skipped_cnt, failed_cnt)
     if failed_cnt:
         sys.exit(1)
 

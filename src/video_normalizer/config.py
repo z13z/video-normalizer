@@ -11,6 +11,11 @@ _SPEED_PRESET = {
     "av1":  {"fast": 10, "medium": 8, "slow": 6},
 }
 
+_WHISPER_MODEL_PRESET = {
+    "fast": "turbo",
+    "medium":  "turbo",
+    "slow": "large-v3",
+}
 
 @dataclass
 class Config:
@@ -20,6 +25,8 @@ class Config:
     quality: str = field(default_factory=lambda: os.getenv("CONVERSION_QUALITY", "high"))
     speed: str = field(default_factory=lambda: os.getenv("CONVERSION_SPEED", "medium"))
     aac_bitrate: str = field(default_factory=lambda: os.getenv("AAC_BITRATE", "192k"))
+    whisper_device: str = field(default_factory=lambda: os.getenv("WHISPER_DEVICE", "cpu"))
+    whisper_model_dir: str = field(default_factory=lambda: os.getenv("WHISPER_MODEL_DIR", "/whisper_models"))
 
     @property
     def crf(self) -> int:
@@ -28,3 +35,7 @@ class Config:
     @property
     def preset(self):
         return _SPEED_PRESET[self.video_codec][self.speed]
+
+    @property
+    def whisper_model(self):
+        return _WHISPER_MODEL_PRESET[os.getenv("WHISPER_MODEL", "turbo")]

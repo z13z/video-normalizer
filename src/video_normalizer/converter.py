@@ -9,18 +9,9 @@ import time
 
 from .analyzer import FileAnalysis, StreamInfo
 from .config import Config
+from .utils import format_duration
 
 logger = logging.getLogger(__name__)
-
-
-def format_duration(seconds):
-    minutes = int(seconds / 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours}h {minutes}m"
-    else:
-        return f"{minutes}m"
-
 
 def _build_output_kwargs(
     analysis: FileAnalysis,
