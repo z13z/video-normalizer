@@ -51,17 +51,15 @@ def transcribe(input_path: Path, analysis: FileAnalysis, config: Config) -> list
         return []
 
     wav_path: Path | None = None
+    start = time.perf_counter()
     try:
-        start = time.perf_counter()
-
         wav_path = _extract_audio(input_path, stream)
         model = whisper.load_model(
             config.whisper_model,
             device=config.whisper_device,
             download_root=config.whisper_model_dir,
         )
-
-        result = model.transcribe(audio=str(wav_path), model=model)
+        result = model.transcribe(audio=str(wav_path), fp16=False)
 
         srt_dir = Path(tempfile.gettempdir())
         writer = WriteSRT(str(srt_dir))
@@ -71,10 +69,10 @@ def transcribe(input_path: Path, analysis: FileAnalysis, config: Config) -> list
         if not srt_path.exists():
             logger.warning("  Whisper: expected SRT at %s not found", srt_path)
             return []
-
-        logging.info(f"Whisper: generated SRT at %s completed in %s", srt_path,
-                     format_duration(time.perf_counter() - start))
         return [srt_path]
     finally:
         if wav_path and wav_path.exists():
             wav_path.unlink(missing_ok=True)
+        srt_path = Path(tempfile.gettempdir()) / f"{wav_path.stem}.srt"
+        logging.info(f"Whisper: generated SRT at %s completed in %s", srt_path,
+                     format_duration(time.perf_counter() - start))

@@ -1,4 +1,5 @@
 import logging
+import shutil
 import uuid
 from pathlib import Path
 
@@ -81,23 +82,15 @@ def append_audio_processing_params(maps, kwargs, audio_streams, aac_bitrate):
         out_a += 1
 
 
-def append_external_subtitle_files(srt_paths, streams, codec_kwargs, maps):
-    if srt_paths:
-        existing_sub_count = sum(1 for m in maps if m.startswith("s:"))
-        for i, srt_path in enumerate(srt_paths):
-            srt_inp = ffmpeg.input(str(srt_path))
-            streams.append(srt_inp["s"])
-            codec_kwargs[f"c:s:{existing_sub_count + i}"] = "mov_text"
-
-
 def convert(
     input_path: Path,
     analysis: FileAnalysis,
     config: Config,
-    srt_paths: list[Path],
 ) -> Path:
     uid = uuid.uuid4().hex[:8]
     tmp_output = f"{tempfile.gettempdir()}{os.sep}{input_path.stem}_{uid}.mp4"
+    if not analysis.requires_processing:
+        shutil.copyfile(input_path, tmp_output)
 
     maps, codec_kwargs = _build_output_kwargs(analysis, config)
 
@@ -106,17 +99,16 @@ def convert(
 
     inp = ffmpeg.input(str(input_path))
     streams = [inp[m] for m in maps]
-    append_external_subtitle_files(srt_paths, streams, codec_kwargs, maps)
     out = ffmpeg.output(*streams, tmp_output, **codec_kwargs)
-    logger.info(f"maps={maps} codec_kwargs={codec_kwargs}")
 
+    start = time.perf_counter()
     try:
-        start = time.perf_counter()
         out.run(overwrite_output=True, quiet=True, capture_stderr=True)
-        elapsed = time.perf_counter() - start
-        logging.info(f"Normalization of %s completed in %s", input_path, format_duration(elapsed))
     except ffmpeg.Error as exc:
         stderr = exc.stderr.decode(errors="replace") if exc.stderr else ""
         raise RuntimeError(f"ffmpeg failed for {input_path}:\n{stderr}") from exc
+    finally:
+        logging.info(f"Normalization of %s completed in %s", input_path,
+                     format_duration(time.perf_counter() - start))
 
     return Path(tmp_output)

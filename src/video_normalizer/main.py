@@ -10,6 +10,7 @@ from .analyzer import analyze
 from .config import Config
 from .converter import convert, SUPPORTED_VIDEO_CODECS
 from .scanner import scan_video_files
+from .subtitle_merger import merge_subtitles
 from .whisper_transcriber import transcribe as whisper_transcribe
 
 
@@ -20,6 +21,18 @@ def _setup_logging(level: str) -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
+
+
+def generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_media_path, log, analysis, config):
+    if needs_whisper:
+        srt_paths.extend(whisper_transcribe(tmp_media_path, analysis, config))
+
+        if srt_paths:
+            merged_path = merge_subtitles(tmp_media_path, srt_paths)
+            tmp_media_path.unlink(missing_ok=True)
+            tmp_media_path = merged_path
+    return tmp_media_path
+
 
 # returns two bools, first one shows if file was processed successfully and second if it was skipped.
 # todo fix using proper result wrapper enum
@@ -36,28 +49,22 @@ def process_file(path: Path, config: Config, log: logging.Logger):
     if not analysis.requires_processing and not needs_whisper:
         return True, True
 
-    srt_paths: list[Path] = []
     tmp_path: Path | None = None
+    srt_paths: list[Path] = []
     try:
-        if needs_whisper:
-            log.info("  Running Whisper transcription for missing English subtitles…")
-            srt_paths.extend(whisper_transcribe(path, analysis, config))
-
-        log.info("  Converting…")
-        tmp_path = convert(path, analysis, config, srt_paths)
+        tmp_path = convert(path, analysis, config)
         log.info("  Converted to tmp: %s (%.1f MB)",
                  tmp_path, tmp_path.stat().st_size / 1_048_576)
+        tmp_path = generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_path, log, analysis, config)
 
         target = path.with_suffix(".mp4")
 
         if path != target and path.exists():
             path.unlink()
-            log.debug("  Removed original: %s", path)
 
         shutil.move(str(tmp_path), str(target))
         log.info("  Done → %s", target)
         return True, False
-
     except RuntimeError as exc:
         log.error("Conversion failed for %s: %s", path, exc)
         return False, False
@@ -100,7 +107,7 @@ def main():
             failed_cnt += 1
         log.info("\t===============\tProcessed: %d \t===============", ok_cnt)
 
-    log.info("Finished. OK=%d  Skipped=%d  Failed=%d",ok_cnt, skipped_cnt, failed_cnt)
+    log.info("Finished. OK=%d  Skipped=%d  Failed=%d", ok_cnt, skipped_cnt, failed_cnt)
     if failed_cnt:
         sys.exit(1)
 
