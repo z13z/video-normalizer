@@ -23,7 +23,7 @@ def _setup_logging(level: str) -> None:
     )
 
 
-def generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_media_path, log, analysis, config):
+def generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_media_path, analysis, config):
     if needs_whisper:
         srt_paths.extend(whisper_transcribe(tmp_media_path, analysis, config))
 
@@ -55,7 +55,7 @@ def process_file(path: Path, config: Config, log: logging.Logger):
         tmp_path = convert(path, analysis, config)
         log.info("  Converted to tmp: %s (%.1f MB)",
                  tmp_path, tmp_path.stat().st_size / 1_048_576)
-        tmp_path = generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_path, log, analysis, config)
+        tmp_path = generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_path, analysis, config)
 
         target = path.with_suffix(".mp4")
 
