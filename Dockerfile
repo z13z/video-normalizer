@@ -7,7 +7,7 @@ RUN groupadd -g ${GID} appgroup && \
     useradd -m -u ${UID} -g ${GID} -s /bin/bash appuser
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

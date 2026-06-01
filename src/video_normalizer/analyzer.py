@@ -14,6 +14,11 @@ CONVERTIBLE_SUBTITLE_CODECS: frozenset[str] = frozenset({
     "tx3g",
 })
 
+IMAGE_BASED_SUBTITLE_CODECS: frozenset[str] = frozenset({
+    "hdmv_pgs_subtitle"
+})
+
+
 @dataclass(frozen=True)
 class StreamInfo:
     global_index: int
@@ -22,6 +27,7 @@ class StreamInfo:
     codec_name: str
     needs_transcode: bool
     drop: bool
+    language: str
 
 
 @dataclass(frozen=True)
@@ -43,6 +49,12 @@ class FileAnalysis:
             return True
         return False
 
+    @property
+    def needs_subtitle_generation(self) -> bool:
+        if any(not s.drop for s in self.subtitle):
+            return False
+        return True
+
 
 def analyze(path: Path, config: Config) -> FileAnalysis:
     probe = ffmpeg.probe(str(path))
@@ -59,6 +71,7 @@ def analyze(path: Path, config: Config) -> FileAnalysis:
             continue
 
         codec: str = raw.get("codec_name", "unknown").lower()
+        lang: str = raw.get("tags", {}).get("language", "unknown").lower()
         type_idx = type_counters[ctype]
         type_counters[ctype] += 1
         global_idx: int = raw["index"]
@@ -71,6 +84,7 @@ def analyze(path: Path, config: Config) -> FileAnalysis:
                 codec_name=codec,
                 needs_transcode=codec != config.video_codec,
                 drop=False,
+                language=lang,
             ))
 
         elif ctype == "audio":
@@ -81,8 +95,8 @@ def analyze(path: Path, config: Config) -> FileAnalysis:
                 codec_name=codec,
                 needs_transcode=codec != "aac",
                 drop=False,
+                language=lang,
             ))
-
         elif ctype == "subtitle":
             if codec in CONVERTIBLE_SUBTITLE_CODECS:
                 subtitle.append(StreamInfo(
@@ -92,6 +106,7 @@ def analyze(path: Path, config: Config) -> FileAnalysis:
                     codec_name=codec,
                     needs_transcode=codec != "mov_text",
                     drop=False,
+                    language=lang,
                 ))
             else:
                 subtitle.append(StreamInfo(
@@ -101,6 +116,7 @@ def analyze(path: Path, config: Config) -> FileAnalysis:
                     codec_name=codec,
                     needs_transcode=False,
                     drop=True,
+                    language=lang,
                 ))
 
     return FileAnalysis(
