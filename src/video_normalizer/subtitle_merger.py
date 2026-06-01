@@ -18,10 +18,9 @@ def merge_subtitles(mp4_path: Path, srt_paths: list[Path]) -> Path:
     inp = ffmpeg.input(str(mp4_path))
     srt_inputs = [ffmpeg.input(str(p)) for p in srt_paths]
 
-    map_args = ["0"] + [f"{i + 1}:s" for i in range(len(srt_paths))]
     codec_kwargs = {"c:v": "copy", "c:a": "copy", "c:s": "mov_text"}
 
-    out = ffmpeg.output(inp, *srt_inputs, str(tmp_output), map=map_args, **codec_kwargs)
+    out = ffmpeg.output(inp, *srt_inputs, str(tmp_output), **codec_kwargs)
     logger.info("Merging subtitles into %s", mp4_path.name)
     start = time.perf_counter()
     try:
