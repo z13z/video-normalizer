@@ -29,5 +29,6 @@ def merge_subtitles(mp4_path: Path, srt_paths: list[Path]) -> Path:
         stderr = exc.stderr.decode(errors="replace") if exc.stderr else ""
         raise RuntimeError(f"ffmpeg subtitle merge failed for {mp4_path}:\n{stderr}") from exc
     finally:
-        logging.info(f"Merged subtitles into %s", mp4_path.name, format_duration(time.perf_counter() - start))
+        logging.info(f"Merged subtitles into %s in %s", mp4_path.name,
+                     format_duration(time.perf_counter() - start))
     return tmp_output
