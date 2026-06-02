@@ -19,7 +19,8 @@ COPY src/ src/
 
 ENV PYTHONPATH=/app/src
 
-RUN chown -R appuser:appgroup /app
+RUN mkdir -p /whisper_models && \
+    chown -R appuser:appgroup /app /whisper_models
 USER appuser
 
 VOLUME ["/media"]
