@@ -6,6 +6,8 @@ from pathlib import Path
 import ffmpeg
 import whisper
 import time
+
+from whisper import Whisper
 from whisper.utils import WriteSRT
 
 from .analyzer import FileAnalysis, StreamInfo
@@ -41,7 +43,7 @@ def _extract_audio(input_path: Path, stream: StreamInfo) -> Path:
     return out_path
 
 
-def transcribe(input_path: Path, analysis: FileAnalysis, config: Config) -> list[Path]:
+def transcribe(input_path: Path, analysis: FileAnalysis, config: Config, model: Whisper) -> list[Path]:
     if config.whisper_model == "none" or not analysis.needs_subtitle_generation:
         return []
 
@@ -54,13 +56,7 @@ def transcribe(input_path: Path, analysis: FileAnalysis, config: Config) -> list
     start = time.perf_counter()
     try:
         wav_path = _extract_audio(input_path, stream)
-        model = whisper.load_model(
-            config.whisper_model,
-            device=config.whisper_device,
-            download_root=config.whisper_model_dir,
-        )
         result = model.transcribe(audio=str(wav_path), fp16=False)
-
         srt_dir = Path(tempfile.gettempdir())
         writer = WriteSRT(str(srt_dir))
         writer(result, str(wav_path), options={"max_line_width": None, "max_line_count": None, "highlight_words": False})

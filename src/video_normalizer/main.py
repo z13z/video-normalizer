@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 
 import ffmpeg
+import whisper
+from whisper import Whisper
 
 from .analyzer import analyze
 from .config import Config
@@ -23,10 +25,9 @@ def _setup_logging(level: str) -> None:
     )
 
 
-def generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_media_path, analysis, config):
+def generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_media_path, analysis, config, whisper_model: Whisper):
     if needs_whisper:
-        srt_paths.extend(whisper_transcribe(tmp_media_path, analysis, config))
-
+        srt_paths.extend(whisper_transcribe(tmp_media_path, analysis, config, whisper_model))
         if srt_paths:
             merged_path = merge_subtitles(tmp_media_path, srt_paths)
             tmp_media_path.unlink(missing_ok=True)
@@ -36,7 +37,7 @@ def generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_media_pat
 
 # returns two bools, first one shows if file was processed successfully and second if it was skipped.
 # todo fix using proper result wrapper enum
-def process_file(path: Path, config: Config, log: logging.Logger):
+def process_file(path: Path, config: Config, whisper_model: Whisper, log: logging.Logger):
     log.info("Scanning: %s", path)
 
     try:
@@ -55,10 +56,8 @@ def process_file(path: Path, config: Config, log: logging.Logger):
         tmp_path = convert(path, analysis, config)
         log.info("  Converted to tmp: %s (%.1f MB)",
                  tmp_path, tmp_path.stat().st_size / 1_048_576)
-        tmp_path = generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_path, analysis, config)
-
+        tmp_path = generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_path, analysis, config, whisper_model)
         target = path.with_suffix(".mp4")
-
         if path != target and path.exists():
             path.unlink()
 
@@ -85,6 +84,14 @@ def validate_config(config: Config, log: logging.Logger):
         sys.exit(1)
 
 
+def create_whisper_model(config: Config):
+    return whisper.load_model(
+        config.whisper_model,
+        device=config.whisper_device,
+        download_root=config.whisper_model_dir,
+    )
+
+
 def main():
     config = Config()
     _setup_logging(config.log_level)
@@ -97,8 +104,9 @@ def main():
         sys.exit(1)
 
     ok_cnt = skipped_cnt = failed_cnt = 0
+    whisper_model = create_whisper_model(config)
     for video_path in scan_video_files(config.media_path):
-        success, skipped = process_file(video_path, config, log)
+        success, skipped = process_file(video_path, config, whisper_model, log)
         if success:
             ok_cnt += 1
         elif skipped:
