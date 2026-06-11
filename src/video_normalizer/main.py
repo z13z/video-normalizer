@@ -38,8 +38,6 @@ def generate_and_merge_missing_subtitles(needs_whisper, srt_paths, tmp_media_pat
 # returns two bools, first one shows if file was processed successfully and second if it was skipped.
 # todo fix using proper result wrapper enum
 def process_file(path: Path, config: Config, whisper_model: Whisper, log: logging.Logger):
-    log.info("Scanning: %s", path)
-
     try:
         analysis = analyze(path, config)
     except ffmpeg.Error as exc:
@@ -50,6 +48,7 @@ def process_file(path: Path, config: Config, whisper_model: Whisper, log: loggin
     if not analysis.requires_processing and not needs_whisper:
         return True, True
 
+    log.info("Processing: %s", path)
     tmp_path: Path | None = None
     srt_paths: list[Path] = []
     try:
@@ -109,11 +108,11 @@ def main():
         success, skipped = process_file(video_path, config, whisper_model, log)
         if success:
             ok_cnt += 1
+            log.info("\t===============\tProcessed: %d \t===============", ok_cnt)
         elif skipped:
             skipped_cnt += 1
         else:
             failed_cnt += 1
-        log.info("\t===============\tProcessed: %d \t===============", ok_cnt)
 
     log.info("Finished. OK=%d  Skipped=%d  Failed=%d", ok_cnt, skipped_cnt, failed_cnt)
     if failed_cnt:
