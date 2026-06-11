@@ -113,6 +113,8 @@ def main():
             skipped_cnt += 1
         else:
             failed_cnt += 1
+        if 0 < config.process_limit <= (ok_cnt + failed_cnt):
+            break
 
     log.info("Finished. OK=%d  Skipped=%d  Failed=%d", ok_cnt, skipped_cnt, failed_cnt)
     if failed_cnt:

@@ -27,6 +27,7 @@ class Config:
     aac_bitrate: str = field(default_factory=lambda: os.getenv("AAC_BITRATE", "192k"))
     whisper_device: str = field(default_factory=lambda: os.getenv("WHISPER_DEVICE", "cpu"))
     whisper_model_dir: str = field(default_factory=lambda: os.getenv("WHISPER_MODEL_DIR", "/whisper_models"))
+    process_limit: int = field(default_factory=lambda: int(os.getenv("PROCESS_LIMIT", "0")))
 
     @property
     def crf(self) -> int:
